@@ -1,14 +1,13 @@
 package com.aas.kafkaproducerimpl;
 
 import com.aas.entity.SampleData;
-import com.aas.kafkaProducer.SampleDataProducer;
+import com.aas.kafkaproducer.SampleDataProducer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
@@ -16,15 +15,11 @@ import java.util.Properties;
 
 /**
  * This class will accept map type data which contains device Id as key and list of sample data as value.
- * In this method traversing through all sample data based on map key and converting it into json string.
- * producing json string into kafka with topic name sample-data.
+ * Here we will create producer object and after traversing through it we will send list of sampleData of same DeviceId to producer thread to produce all data to kafka.
  */
-@Component
 public class SampleDataProducerImpl implements SampleDataProducer {
-    @Override
-    public String dataProducer(Map<Integer, List<SampleData>> listData) {
+    public void dataProducer(Map<Integer, List<SampleData>> listData) {
 
-        String result="";
         //Setting properties for kafka producer.
         Properties props = new Properties();
 
@@ -39,23 +34,19 @@ public class SampleDataProducerImpl implements SampleDataProducer {
         //Creating kafka producer object
         Producer<String, String> producer = new KafkaProducer<>(props);
 
-        ObjectMapper mapper = new ObjectMapper();
-        try {
-            for (Integer deviceId : listData.keySet()) {
-                for (SampleData sampleData : listData.get(deviceId)) {
-                    //Converting sample data object into json.
-                    String data = mapper.writeValueAsString(sampleData);
-                    //Producing sample data onto kafka.
-                    producer.send(new ProducerRecord<>("sample-data", data));
-                }
+        for (Integer deviceId : listData.keySet()) {
+            //Creating and starting producerThread to produce data to kafka
+            ProducerThread p = new ProducerThread(listData.get(deviceId), producer);
+            p.start();
+            try {
+                //here joining thread so that one thread start running when previous one is completed its execution.
+                p.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
-            //closing kafka producer connection
-            producer.close();
-            result= "Successfully produces";
-        } catch (JsonProcessingException e) {
-            result ="Error with Json processing";
-            e.printStackTrace();// TODO need to log instead of printing on console.
         }
-    return result;
+        //closing kafka producer connection
+        producer.close();
+        System.out.println("Producer Closed");
     }
 }

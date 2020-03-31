@@ -1,9 +1,9 @@
-package com.aas.kafkaProducer;
+package com.aas.kafkaproducer;
 
 import com.aas.entity.SampleData;
 import java.util.List;
 import java.util.Map;
 
 public interface SampleDataProducer {
-     String dataProducer(Map<Integer, List<SampleData>> listData);
+     void dataProducer(Map<Integer, List<SampleData>> listData);
 }
